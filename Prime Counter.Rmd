@@ -1,0 +1,239 @@
+---
+title: "Prime Counter"
+author: "Michael A. Wherry"
+date: "2023-05-12"
+output: html_document
+css: www/darkly.css
+editor_options: 
+  chunk_output_type: console
+---
+
+Below is an example of a subordinate part of the Willans' Formula responsible for calculating the primes within a given range, implemented as a function in R. Willans' formula, introduced by Willan in 1964, is an elegant prime-generating formula that exploits the properties of prime numbers and certain mathematical functions to identify primes.
+
+The formula is defined as follows:
+
+The function `F(j)` is equal to the floor of the square of the cosine of the value `pi((j-1)!+1)/j` (where `!` denotes the factorial operation, and `pi` is the constant Pi). Specifically:
+
+*   `F(j) = ⌊cos²[π((j-1)!+1)/j]⌋`, for `j > 1` an integer.
+
+The floor function `⌊x⌋` rounds `x` down to the greatest integer less than or equal to `x`. The values of `F(j)` are such that:
+
+*   `F(j) = 1` for `j = 1` or `j` prime,
+*   `F(j) = 0` otherwise.
+
+This part of the formula is a consequence of Wilson's theorem, and it hides the prime numbers `j` as those for which `F(j) = 1`.
+
+Then, the prime counting function `π(x)` is defined as:
+
+*   `π(x) = -1 + ΣF(k)`, for `k = 1` to `x`.
+
+And the `n`\-th prime number `p_n` is given by:
+
+*   `p_n = 1 + Σ ⌊_n/(ΣF(j))⌋^(1/n)⌋`, for `m = 1` to `2^n`, and `j = 1` to `m`.
+
+This can also be written as:
+
+*   `p_n = 1 + Σ ⌊_n/(1 + π(m))⌋^(1/n)⌋`.
+
+Here, `π(m)` is the prime-counting function, `Σ` denotes the summation, and `n` is the number of primes.
+
+Whilst this is not a particularly efficient or practical formula when considering scalability, it still manages to be a beautiful interplay of a variety of clever mathematical concepts. 
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(plotly)
+
+x_values <- seq(0.01, 20, by = 0.01)
+
+df <- data.frame(x = x_values)
+
+# calculate each step
+df$factorial <- factorial(df$x - 1) + 1
+df$division <- df$factorial / df$x
+df$multiplication <- df$division * pi
+df$cosine <- cos(df$multiplication)
+df$squaring <- df$cosine ^ 2
+df$y <- floor(df$squaring)
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+plotly_theme <- list(
+  plot_bgcolor = "#1e212400", # plot.background
+  paper_bgcolor = "#1e212400", # panel.background
+  font = list(color = "#F7F7F7", size = 14), # base font color and size
+    
+    # Style the x-axis
+    xaxis = list(
+      gridcolor = "grey40",
+      zerolinecolor = "grey40",
+      showgrid = TRUE
+    ),
+    
+    # Style the y-axis
+    yaxis = list(
+      gridcolor = "grey40",
+      zerolinecolor = "grey40",
+      showgrid = TRUE
+    ),
+  
+  legend = list(
+    bgcolor = "#1e2124", # legend.background and legend.key
+    x = 0.2, y = 0.815, # legend.position
+    font = list(color = "grey40") # legend.text
+  ),
+  
+  title = list(
+    text = "After Floor : ⌊cos²(π * ((j - 1)! + 1) / j)⌋",
+    x = 0.5, y = 1.2,
+    xref = "paper", yref = "paper",
+    xanchor = "center", yanchor = "top"
+  ) 
+)
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+# Identify any indices where jumps occur
+jump_indices <- which(df$y == 1)
+
+# Define traces for each step of the function
+p <- plot_ly(df, x = ~x) %>%
+  # Add traces for the continuous segments
+  add_trace(data = df[-(jump_indices), ],
+            x = ~x, y = ~y,
+            type = 'scatter', mode = 'lines',
+            name = "Floor",
+            line = list(color = '#1f77b4', width = 1),
+            showlegend = FALSE) %>%
+
+  # Add closed circles for the jumps
+  add_trace(data = df[jump_indices, ],
+            x = ~x, y = ~y,
+            type = 'scatter', mode = 'markers',
+            name = "Jump",
+            marker = list(symbol = "circle", size = 12, color = "#1f77b4",
+                          line = list(color = "#1f77b4", width = 2),
+                          opacity = 1),
+            showlegend = FALSE) %>%
+  
+  # Add open circles for the holes
+  add_trace(data = df[jump_indices, ],
+            x = ~x, y = ~y - 1,
+            type = 'scatter', mode = 'markers',
+            name = "Hole",
+            marker = list(symbol = "circle-open", size = 12, color = "#1f77b4",
+                          line = list(color = "#1f77b4", width = 2),
+                          opacity = 1),
+            showlegend = FALSE) %>%
+  
+  add_trace(data = df,
+            y = ~squaring, 
+            type = 'scatter', mode = 'lines', 
+            name = "After Squaring",
+            line = list(color = '#1f77b4', width = 1),
+            showlegend = FALSE,
+            visible = FALSE,
+            inherit = FALSE) %>%
+  
+  add_trace(data = df,
+            y = ~cosine, 
+            type = 'scatter', mode = 'lines', 
+            name = "After Cosine",
+            line = list(color = '#1f77b4', width = 1),
+            showlegend = FALSE,
+            visible = FALSE,
+            inherit = FALSE) %>%
+  
+  add_trace(data = df,
+            y = ~multiplication, 
+            type = 'scatter', mode = 'lines', 
+            name = "After Multiplication",
+            line = list(color = '#1f77b4', width = 1),
+            showlegend = FALSE,
+            visible = FALSE,
+            inherit = FALSE) %>%
+  
+  add_trace(data = df, 
+            y = ~division, 
+            type = 'scatter', mode = 'lines', 
+            name = "After Division",
+            line = list(color = '#1f77b4', width = 1),
+            showlegend = FALSE,
+            visible = FALSE,
+            inherit = FALSE) %>%
+  
+  add_trace(data = df,
+            y = ~factorial, 
+            type = 'scatter', mode = 'lines', 
+            name = "After Factorial",
+            line = list(color = '#1f77b4', width = 1),
+            showlegend = FALSE,
+            visible = FALSE,
+            inherit = FALSE) %>%
+  
+  config(displayModeBar = FALSE) %>%
+
+  {do.call(layout, c(list(.), plotly_theme))}
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+# Add buttons to switch between traces
+p <- p %>%
+  layout(
+    updatemenus = list(
+      list(
+        bgcolor = "#1e2124",
+        activebgcolor = "#bbbbbb",
+        font = list(color = "#1f77b4"),
+        buttons = list(
+          list(method = "update",
+               args = list(list("visible" = c(T, T, T, F, F, F, F, F)),
+                           list("title" = "After Floor : ⌊cos²(π * ((j - 1)! + 1) / j)⌋")),
+               label = "After Floor"),
+          list(method = "update",
+               args = list(list("visible" = c(F, F, F, T, F, F, F, F)),
+                           list("title" = "After Squaring : cos²(π * ((j - 1)! + 1) / j)")),
+               label = "After Squaring"),
+          list(method = "update",
+               args = list(list("visible" = c(F, F, F, F, T, F, F, F)),
+                           list("title" = "After Cosine : cos(π * ((j - 1)! + 1) / j")),
+               label = "After Cosine"),
+          list(method = "update",
+               args = list(list("visible" = c(F, F, F, F, F, T, F, F)),
+                           list("title" = "After Multiplication : π * ((j - 1)! + 1) / j")),
+               label = "After Multiplication"),
+          list(method = "update",
+               args = list(list("visible" = c(F, F, F, F, F, F, T, F)),
+                           list("title" = "After Division : ((j - 1)! + 1) / j")),
+               label = "After Division"),
+          list(method = "update",
+               args = list(list("visible" = c(F, F, F, F, F, F, F, T)),
+                           list("title" = "After Factorial  : (j - 1)!")),
+               label = "After Factorial")
+        ),
+        direction = "down",
+        showactive = TRUE,
+        x = -.4,
+        xanchor = "left",
+        y = 1,
+        yanchor = "bottom"
+      )
+    )
+  )
+```
+
+```{r echo=FALSE, message=FALSE, out.width='100%'}
+# Display the plot
+p
+```
+
+### Formula with sigma notation:  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.align='center'}
+knitr::include_graphics("images/willan-part.png")
+```
+
+### Willans' formula in its entirety:  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.align='center'}
+knitr::include_graphics("images/willan.png")
+```
